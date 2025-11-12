@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DNS Lookup Tool — Forward & Reverse</title>
+  <style>
+    :root{
+      --bg:#071025; --card:#071827; --accent:#60a5fa; --muted:#9fb4d1;
+      --glass:rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:
+      linear-gradient(180deg,#021027 0%, #081222 60%);color:#e8f6ff;display:flex;align-items:center;justify-content:center;padding:28px}
+    .wrap{width:100%;max-width:1000px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+    h1{margin:0 0 6px 0;font-size:20px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+    @media (max-width:800px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass);color:inherit;font-size:15px}
+    .row{display:flex;gap:8px;margin-top:10px}
+    button{padding:10px 12px;border-radius:8px;border:none;background:var(--accent);color:#022046;font-weight:700;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .small{font-size:13px;color:var(--muted)}
+    .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .chip{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+    .result{margin-top:12px;color:#dff0ff}
+    pre{background:#041226;padding:12px;border-radius:8px;overflow:auto;font-size:13px;color:#cfe9ff}
+    .actions{display:flex;gap:8px;margin-top:10px}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="main">
+    <h1>DNS Lookup Tool — Forward & Reverse</h1>
+    <p class="lead">Enter an IP to get the hostname (PTR) or enter a hostname to get A / AAAA records. Uses Google DNS-over-HTTPS (client-side).</p>
+
+    <div class="grid">
+      <!-- Forward lookup (hostname -> IPs) -->
+      <section class="card" aria-labelledby="forwardTitle">
+        <h2 id="forwardTitle" style="margin:0 0 8px 0;font-size:16px">Forward Lookup (hostname → IP)</h2>
+        <label for="hostInput">Hostname (example: example.com)</label>
+        <input id="hostInput" type="text" placeholder="Enter hostname (e.g., example.com)" autocomplete="off" />
+        <div class="row">
+          <button id="forwardBtn">Lookup A/AAAA</button>
+          <button id="forwardClear" class="ghost">Clear</button>
+          <div style="flex:1"></div>
+        </div>
+
+        <div class="examples" aria-hidden="true">
+          <div class="chip" data-host="google.com">google.com</div>
+          <div class="chip" data-host="cloudflare.com">cloudflare.com</div>
+          <div class="chip" data-host="example.com">example.com</div>
+        </div>
+
+        <div class="result" id="forwardResult">
+          <div class="small">Input: <span id="fInput">—</span></div>
+          <div class="small">A records: <span id="fA">—</span></div>
+          <div class="small">AAAA records: <span id="fAAAA">—</span></div>
+          <details style="margin-top:8px">
+            <summary class="small" style="cursor:pointer;color:var(--muted)">Raw JSON</summary>
+            <pre id="fRaw">{}</pre>
+          </details>
+          <div class="actions">
+            <button id="fCopy" class="ghost">Copy IPs</button>
+            <button id="fOpen" class="ghost">Open First IP</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reverse lookup (IP -> hostname) -->
+      <section class="card" aria-labelledby="reverseTitle">
+        <h2 id="reverseTitle" style="margin:0 0 8px 0;font-size:16px">Reverse Lookup (IP → hostname)</h2>
+        <label for="ipInput">IP Address (IPv4 or IPv6)</label>
+        <input id="ipInput" type="text" placeholder="Enter IP (e.g., 8.8.8.8 or 2001:4860:4860::8888)" autocomplete="off" />
+        <div class="row">
+          <button id="reverseBtn">Lookup PTR</button>
+          <button id="reverseClear" class="ghost">Clear</button>
+          <div style="flex:1"></div>
+        </div>
+
+        <div class="examples" aria-hidden="true">
+          <div class="chip" data-ip="8.8.8.8">8.8.8.8</div>
+          <div class="chip" data-ip="1.1.1.1">1.1.1.1</div>
+          <div class="chip" data-ip="192.168.0.10">192.168.0.10</div>
+        </div>
+
+        <div class="result" id="reverseResult">
+          <div class="small">Input: <span id="rInput">—</span></div>
+          <div class="small">PTR Hostname: <span id="rHost">—</span></div>
+          <details style="margin-top:8px">
+            <summary class="small" style="cursor:pointer;color:var(--muted)">Raw JSON</summary>
+            <pre id="rRaw">{}</pre>
+          </details>
+          <div class="actions">
+            <button id="rCopy" class="ghost">Copy Hostname</button>
+            <button id="rOpen" class="ghost">Open Hostname</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>Note: Private addresses typically don't have PTR records. For heavy usage or production hide lookups on server-side to avoid client-side CORS limits and rate-limits.</footer>
+  </div>
+
+  <script>
+    // --- Utilities: IP/Hostname validation & IPv6 expansion ---
+    function isIPv4(ip){
+      const parts = ip.trim().split('.');
+      if(parts.length !== 4) return false;
+      return parts.every(p => /^[0-9]+$/.test(p) && Number(p) >= 0 && Number(p) <= 255);
+    }
+
+    function isIPv6(ip){
+      return ip.includes(':');
+    }
+
+    function isHostname(h){
+      if(!h) return false;
+      // Basic hostname validation (allows subdomains)
+      return /^[a-zA-Z0-9.-]{1,253}$/.test(h) && !/^\d+$/.test(h);
+    }
+
+    // Expand compressed IPv6 to full form (8 groups of 4 hex digits)
+    function expandIPv6(input){
+      let ip = input.trim();
+      if(!ip.includes(':')) throw new Error('Not IPv6');
+      // handle IPv4-mapped IPv6 like ::ffff:192.0.2.128
+      if(ip.includes('.') && ip.includes(':')){
+        const lastColon = ip.lastIndexOf(':');
+        const ipv4 = ip.slice(lastColon+1);
+        const head = ip.slice(0,lastColon+1);
+        const parts4 = ipv4.split('.').map(Number);
+        if(parts4.length !== 4 || parts4.some(n => isNaN(n))) throw new Error('Invalid mixed IPv4/IPv6');
+        const hex1 = ((parts4[0] << 8) | parts4[1]).toString(16);
+        const hex2 = ((parts4[2] << 8) | parts4[3]).toString(16);
+        ip = head + hex1 + ':' + hex2;
+      }
+      const parts = ip.split('::');
+      let left = [], right = [];
+      if(parts.length === 1){
+        left = ip.split(':');
+      } else if(parts.length === 2){
+        left = parts[0] === '' ? [] : parts[0].split(':');
+        right = parts[1] === '' ? [] : parts[1].split(':');
+      } else {
+        throw new Error('Invalid IPv6');
+      }
+      const missing = 8 - (left.length + right.length);
+      if(missing < 0) throw new Error('Invalid IPv6 groups');
+      const middle = new Array(missing).fill('0');
+      const full = [...left, ...middle, ...right].map(h => h.padStart(4,'0'));
+      if(full.length !== 8) throw new Error('Expand failed');
+      return full.join(':');
+    }
+
+    // Build PTR domain name from IP (supports IPv4 and IPv6)
+    function buildPTRName(ip){
+      if(isIPv4(ip)) return ip.split('.').reverse().join('.') + '.in-addr.arpa';
+      if(isIPv6(ip)){
+        // expand, remove colons, split into nibbles, reverse, append ip6.arpa
+        const expanded = expandIPv6(ip); // may throw
+        const hex = expanded.replace(/:/g,'');
+        return hex.split('').reverse().join('.') + '.ip6.arpa';
+      }
+      throw new Error('Not a valid IP');
+    }
+
+    // Query DNS-over-HTTPS (Google)
+    async function dohQuery(name, type){
+      // type: A=1, AAAA=28, PTR=12  (but we can pass names 'A','AAAA','PTR' too)
+      const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+      const resp = await fetch(url, {cache:'no-store'});
+      if(!resp.ok) throw new Error('DNS query failed: ' + resp.status);
+      return resp.json();
+    }
+
+    // --- UI elements ---
+    const hostInput = document.getElementById('hostInput');
+    const forwardBtn = document.getElementById('forwardBtn');
+    const forwardClear = document.getElementById('forwardClear');
+    const fInput = document.getElementById('fInput');
+    const fA = document.getElementById('fA');
+    const fAAAA = document.getElementById('fAAAA');
+    const fRaw = document.getElementById('fRaw');
+    const fCopy = document.getElementById('fCopy');
+    const fOpen = document.getElementById('fOpen');
+
+    const ipInput = document.getElementById('ipInput');
+    const reverseBtn = document.getElementById('reverseBtn');
+    const reverseClear = document.getElementById('reverseClear');
+    const rInput = document.getElementById('rInput');
+    const rHost = document.getElementById('rHost');
+    const rRaw = document.getElementById('rRaw');
+    const rCopy = document.getElementById('rCopy');
+    const rOpen = document.getElementById('rOpen');
+
+    // Example chips
+    document.querySelectorAll('.chip[data-host]').forEach(el => el.addEventListener('click', () => hostInput.value = el.dataset.host));
+    document.querySelectorAll('.chip[data-ip]').forEach(el => el.addEventListener('click', () => ipInput.value = el.dataset.ip));
+
+    // --- Forward lookup handler ---
+    forwardBtn.addEventListener('click', async () => {
+      const host = hostInput.value.trim();
+      fInput.textContent = host || '—';
+      fA.textContent = 'Looking...';
+      fAAAA.textContent = 'Looking...';
+      fRaw.textContent = '{}';
+
+      if(!isHostname(host)){
+        fA.textContent = 'Invalid hostname';
+        fAAAA.textContent = 'Invalid hostname';
+        return;
+      }
+
+      try{
+        // Query A records
+        const [aResp, aaaaResp] = await Promise.all([
+          dohQuery(host, 'A').catch(e => ({Error: e.message})),
+          dohQuery(host, 'AAAA').catch(e => ({Error: e.message}))
+        ]);
+        // Process A
+        if(aResp && Array.isArray(aResp.Answer)){
+          const addrs = aResp.Answer.filter(a => a.type === 1).map(a => a.data);
+          fA.textContent = addrs.length ? addrs.join(', ') : 'No A records';
+        } else if(aResp && aResp.Status === 3){
+          fA.textContent = 'NameError (NXDOMAIN)';
+        } else if(aResp && aResp.Error){
+          fA.textContent = 'Error: ' + aResp.Error;
+        } else {
+          fA.textContent = 'No A records';
+        }
+        // Process AAAA
+        if(aaaaResp && Array.isArray(aaaaResp.Answer)){
+          const addrs6 = aaaaResp.Answer.filter(a => a.type === 28).map(a => a.data);
+          fAAAA.textContent = addrs6.length ? addrs6.join(', ') : 'No AAAA records';
+        } else if(aaaaResp && aaaaResp.Status === 3){
+          fAAAA.textContent = 'NameError (NXDOMAIN)';
+        } else if(aaaaResp && aaaaResp.Error){
+          fAAAA.textContent = 'Error: ' + aaaaResp.Error;
+        } else {
+          fAAAA.textContent = 'No AAAA records';
+        }
+        // merge raw
+        fRaw.textContent = JSON.stringify({A: aResp, AAAA: aaaaResp}, null, 2);
+      }catch(err){
+        fA.textContent = 'Error: ' + err.message;
+        fAAAA.textContent = 'Error: ' + err.message;
+        fRaw.textContent = '{}';
+        console.error(err);
+      }
+    });
+
+    forwardClear.addEventListener('click', () => {
+      hostInput.value = '';
+      fInput.textContent = '—';
+      fA.textContent = '—';
+      fAAAA.textContent = '—';
+      fRaw.textContent = '{}';
+    });
+
+    fCopy.addEventListener('click', () => {
+      const text = [fA.textContent, fAAAA.textContent].filter(t => t && t !== '—' && !t.startsWith('Error') && !t.includes('No ')).join(', ');
+      if(!text) return alert('No IPs to copy');
+      navigator.clipboard.writeText(text).then(() => alert('Copied IPs')).catch(() => alert('Copy failed'));
+    });
+
+    fOpen.addEventListener('click', () => {
+      const text = fA.textContent.split(',')[0].trim();
+      if(!text || text === '—' || text.startsWith('No ') || text.startsWith('Error')) return alert('No IP to open');
+      // open http://<ip>
+      window.open('http://' + text, '_blank');
+    });
+
+    // --- Reverse lookup handler ---
+    reverseBtn.addEventListener('click', async () => {
+      const ip = ipInput.value.trim();
+      rInput.textContent = ip || '—';
+      rHost.textContent = 'Looking...';
+      rRaw.textContent = '{}';
+
+      try{
+        const ptrName = buildPTRName(ip); // may throw if invalid
+        const json = await dohQuery(ptrName, 'PTR');
+        rRaw.textContent = JSON.stringify(json, null, 2);
+        if(json && Array.isArray(json.Answer) && json.Answer.length){
+          const ptr = json.Answer.find(a => a.type === 12) || json.Answer[0];
+          const hostname = ptr && ptr.data ? ptr.data.replace(/\.$/, '') : 'No hostname in record';
+          rHost.textContent = hostname;
+        } else if(json && json.Status === 3){
+          rHost.textContent = 'NameError (NXDOMAIN)';
+        } else {
+          rHost.textContent = 'No PTR record found';
+        }
+      }catch(err){
+        rHost.textContent = 'Error: ' + err.message;
+        rRaw.textContent = '{}';
+        console.error(err);
+      }
+    });
+
+    reverseClear.addEventListener('click', () => {
+      ipInput.value = '';
+      rInput.textContent = '—';
+      rHost.textContent = '—';
+      rRaw.textContent = '{}';
+    });
+
+    rCopy.addEventListener('click', () => {
+      const text = rHost.textContent;
+      if(!text || text === '—' || text.startsWith('Error') || text === 'No PTR record found') return alert('Nothing to copy');
+      navigator.clipboard.writeText(text).then(() => alert('Hostname copied')).catch(() => alert('Copy failed'));
+    });
+
+    rOpen.addEventListener('click', () => {
+      const host = rHost.textContent;
+      if(!host || host === '—' || host.startsWith('Error') || host === 'No PTR record found') return alert('No hostname to open');
+      window.open('http://' + host, '_blank');
+    });
+
+    // keyboard: enter triggers relevant button
+    hostInput.addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); forwardBtn.click(); }});
+    ipInput.addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); reverseBtn.click(); }});
+  </script>
+</body>
+</html>
